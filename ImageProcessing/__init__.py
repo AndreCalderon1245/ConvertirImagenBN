@@ -2,9 +2,9 @@
 #
 
 import Ice
-Ice.updateModule("ImageConverter")
+Ice.updateModule("ImageProcessing")
 
 # Modules:
-import imageConverter_ice
+import ImageConverter_ice
 
 # Submodules:

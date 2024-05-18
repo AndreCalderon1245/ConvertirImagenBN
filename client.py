@@ -1,34 +1,49 @@
 import Ice
 import sys
+import base64
 import os
 
-Ice.loadSlice('ImageConverter.ice')
-import ImageConverter
+# Importar la interfaz generada por Ice
+import ImageProcessing
 
-def get_downloads_folder():
-    # Función para obtener la ruta de la carpeta de descargas del usuario
-    downloads_folder = os.path.join(os.path.expanduser('~'), 'Downloads')
-    return downloads_folder
-
-def get_user_input():
-    # Solicitar la ruta de la imagen de entrada y el nombre del archivo de salida al usuario
-    input_path = input("Ingrese la ruta de la imagen de entrada (puede ser JPG o PNG): ")
-    output_name = input("Ingrese el nombre del archivo de salida para la imagen convertida: ")
-    return input_path, output_name
-
+# Configurar Ice
 with Ice.initialize(sys.argv) as communicator:
-    base = communicator.stringToProxy("ImageConverter:default -p 10000")
-    converter = ImageConverter.ConverterPrx.checkedCast(base)
-    if not converter:
-        raise RuntimeError("Error al obtener el proxy del servidor Ice")
-
-    # Obtener la ruta de la imagen de entrada y el nombre del archivo de salida desde la entrada del usuario
-    input_path, output_name = get_user_input()
-
-    # Obtener la ruta completa del archivo de salida en la carpeta de descargas
-    downloads_folder = get_downloads_folder()
-    output_file = os.path.join(downloads_folder, output_name)
-
-    # Llamar al método para convertir la imagen a blanco y negro
-    converter.convertToBlackAndWhite(input_path, output_file)
-    print(f"Imagen convertida guardada en: {output_file}")
+    # Crear un proxy con la dirección IP específica
+    proxy_str = "ImageProcessor:tcp -h 192.168.0.23 -p 10000"
+    base = communicator.stringToProxy(proxy_str)
+    image_processor = ImageProcessing.ImageProcessorPrx.checkedCast(base)
+    if not image_processor:
+        raise RuntimeError("Invalid proxy")
+    
+    # Solicitar al usuario la ruta de la imagen
+    image_path = input("Ingrese la ruta de la imagen: ")
+    
+    # Verificar si la ruta de la imagen es válida
+    if not os.path.exists(image_path):
+        print("La ruta de la imagen no es válida.")
+        sys.exit(1)
+    
+    # Leer la imagen desde la ruta proporcionada
+    with open(image_path, "rb") as f:
+        image_data = f.read()
+    
+    # Codificar la imagen en base64
+    image_data_base64 = base64.b64encode(image_data).decode()
+    
+    # Llamar al método en el servidor para procesar la imagen
+    processed_image_base64 = image_processor.processImage(image_data_base64)
+    
+    # Decodificar la imagen procesada de base64
+    processed_image_data = base64.b64decode(processed_image_base64)
+    
+    # Obtener la ruta de la carpeta de descargas del usuario
+    downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+    
+    # Generar la ruta de la imagen procesada en la carpeta de descargas
+    processed_image_path = os.path.join(downloads_folder, "processed_image.jpg")
+    
+    # Guardar la imagen procesada en la carpeta de descargas
+    with open(processed_image_path, "wb") as f_processed:
+        f_processed.write(processed_image_data)
+    
+    print(f"La imagen procesada se ha guardado en: {processed_image_path}")

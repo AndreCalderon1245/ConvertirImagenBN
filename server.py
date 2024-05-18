@@ -1,25 +1,33 @@
 import Ice
 import sys
+import base64
 from PIL import Image
+from io import BytesIO
 
-Ice.loadSlice('ImageConverter.ice')
-import ImageConverter
+# Importar la interfaz generada por Ice
+import ImageProcessing
 
-class ConverterI(ImageConverter.Converter):
-    def convertToBlackAndWhite(self, inputFile, outputFile, current=None):
-        try:
-            # Abrir la imagen de entrada usando Pillow
-            img = Image.open(inputFile)
-            # Convertir la imagen a escala de grises
-            img = img.convert('L')
-            # Guardar la imagen en blanco y negro en el archivo de salida
-            img.save(outputFile)
-            print(f"Imagen convertida guardada en: {outputFile}")
-        except Exception as e:
-            print(f"Error al convertir la imagen: {str(e)}")
+class ImageProcessorI(ImageProcessing.ImageProcessor):
+    def processImage(self, imageDataBase64, current=None):
+        # Decodificar la imagen de base64
+        image_data = base64.b64decode(imageDataBase64)
+        
+        # Convertir la imagen a blanco y negro
+        img = Image.open(BytesIO(image_data))
+        img_bw = img.convert("L")
+        
+        # Guardar la imagen en blanco y negro como base64
+        buffered = BytesIO()
+        img_bw.save(buffered, format="JPEG")
+        img_bw_base64 = base64.b64encode(buffered.getvalue()).decode()
+        
+        # Devolver la imagen en blanco y negro como base64
+        return img_bw_base64
 
+# Configurar Ice
 with Ice.initialize(sys.argv) as communicator:
-    adapter = communicator.createObjectAdapterWithEndpoints("ImageConverterAdapter", "default -p 10000")
-    adapter.add(ConverterI(), Ice.stringToIdentity("ImageConverter"))
+    adapter = communicator.createObjectAdapterWithEndpoints("ImageProcessorAdapter", "default -h 192.168.0.23 -p 10000")
+    object = ImageProcessorI()
+    adapter.add(object, communicator.stringToIdentity("ImageProcessor"))
     adapter.activate()
     communicator.waitForShutdown()

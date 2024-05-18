@@ -1,5 +1,5 @@
-module ImageConverter {
-    interface Converter {
-        void convertToBlackAndWhite(string inputFile, string outputFile);
+module ImageProcessing {
+    interface ImageProcessor {
+        string processImage(string imageDataInput);
     };
 };
